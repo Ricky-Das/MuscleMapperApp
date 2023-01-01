@@ -1,9 +1,36 @@
 import React from "react";
-import {ScrollView, SafeAreaView, View, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
+import {FlatList, SafeAreaView, View, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
+import * as SQLite from 'expo-sqlite'
 
 import AppText from "../components/AppText";
 
+const db = SQLite.openDatabase('todolist.db');
+
 function AllWorkoutsScreen(props) {
+    const [workout, setWorkout] = useState('');
+    const [workouts, setWorkouts] = useState([]);
+  
+    useEffect(() => {
+      db.transaction((tx) => {
+        tx.executeSql('CREATE TABLE IF NOT EXISTS todos (id INTEGER PRIMARY KEY NOT NULL, workoutName TEXT NOT NULL, );');
+      });
+      retrieveWorkouts();
+    }, []);
+  
+    const addTodo = () => {
+      db.transaction((tx) => {
+        tx.executeSql('INSERT INTO todos (todo) VALUES (?)', [todo]);
+      });
+      retrieveTodos();
+    };
+  
+    const retrieveTodos = () => {
+      db.transaction((tx) => {
+        tx.executeSql('SELECT * FROM todos', [], (_, { rows }) =>
+          setTodos(rows._array)
+        );
+      });
+    };
     const numWorkouts = 6
 
     const containers = []
@@ -16,9 +43,10 @@ function AllWorkoutsScreen(props) {
             <View style = {styles.titleContainer}>
                 <AppText intendedFontSize={48} intendedColor='red' text="All Workouts"/>
             </View>
-            <ScrollView style={styles.scrollViewStyle}>
-                {containers}
-            </ScrollView>
+            <Flatlist 
+            style={styles.scrollViewStyle}
+            data
+            />
         </SafeAreaView>
     );
 }
