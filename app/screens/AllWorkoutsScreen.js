@@ -1,74 +1,137 @@
-import React from "react";
-import {FlatList, SafeAreaView, View, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
-import * as SQLite from 'expo-sqlite'
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, FlatList, SafeAreaView } from 'react-native';
+import * as SQLite from 'expo-sqlite';
 
-import AppText from "../components/AppText";
+const db = SQLite.openDatabase('workouts.db');
 
-const db = SQLite.openDatabase('todolist.db');
+const WorkoutsScreen = () => {
+  const [mode, setMode] = useState('list');
+  const [workoutName, setWorkoutName] = useState('');
+  const [exercise, setExercise] = useState('');
+  const [sets, setSets] = useState('');
+  const [exerciseList, setExerciseList] = useState([]);
+  const [workouts, setWorkouts] = useState([]);
 
-function AllWorkoutsScreen(props) {
-    const [workout, setWorkout] = useState('');
-    const [workouts, setWorkouts] = useState([]);
-  
-    useEffect(() => {
-      db.transaction((tx) => {
-        tx.executeSql('CREATE TABLE IF NOT EXISTS todos (id INTEGER PRIMARY KEY NOT NULL, workoutName TEXT NOT NULL, );');
+  useEffect(() => {
+    db.transaction((tx) => {
+      tx.executeSql(
+        'CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, exerciseList TEXT NOT NULL, setsList TEXT NOT NULL);',
+        (_, result) => {
+          console.log(result);
+          console.log("executeSql successfully executed.")
+        }
+      );
+    });
+    retrieveWorkouts();
+  }, []);
+
+  const addExercise = () => {
+    setExerciseList([...exerciseList, { exercise, sets }]);
+    setExercise('');
+    setSets('');
+  };
+
+  const addWorkout = () => {
+    db.transaction((tx) => {
+      tx.executeSql(
+        'INSERT INTO workouts (name, exerciseList, setsList) VALUES (?, ?, ?)',
+        [workoutName, JSON.stringify(exerciseList), JSON.stringify(exerciseList.map((exercise) => exercise.sets))]
+      );
+    });
+    setWorkoutName('');
+    setExerciseList([]);
+    setMode('list');
+    retrieveWorkouts();
+  };
+
+  const deleteWorkout = (id) => {
+    db.transaction((tx) => {
+      tx.executeSql('DELETE FROM workouts WHERE id = ?', [id]);
+    });
+    retrieveWorkouts();
+  };
+
+  const retrieveWorkouts = () => {
+    db.transaction((tx) => {
+      tx.executeSql('SELECT * FROM workouts', [], (_, { rows }) => {
+        console.log(rows._array);
+        setWorkouts(rows._array);
       });
-      retrieveWorkouts();
-    }, []);
-  
-    const addTodo = () => {
+    });
+  };
+
+  const addTestWorkout = () => {
+    console.log(db);
+    try {
       db.transaction((tx) => {
-        tx.executeSql('INSERT INTO todos (todo) VALUES (?)', [todo]);
-      });
-      retrieveTodos();
-    };
-  
-    const retrieveTodos = () => {
-      db.transaction((tx) => {
-        tx.executeSql('SELECT * FROM todos', [], (_, { rows }) =>
-          setTodos(rows._array)
+        tx.executeSql(
+          'INSERT INTO workouts (nme, exerciseList, setsList) VALUES (?, ?, ?',
+          ['Test Workout', '[{"exercise":"Pushups","sets":10}]', '[{"sets":3}]'],
+          (_, result) => {
+            console.log(result);
+            console.log("executeSql successfully executed.")
+          }
         );
+      }, null, null, (error) => {
+        console.log(error);
       });
-    };
-    const numWorkouts = 6
-
-    const containers = []
-    for (var i = 0; i < numWorkouts; i++) {
-        containers.push(<TouchableOpacity key={i} style={styles.workoutContainer}></TouchableOpacity>)
+    } catch (error) {
+      console.log(error);
     }
+  }; 
 
+  if (mode === 'list') {
     return (
-        <SafeAreaView style={{flex:1}}>
-            <View style = {styles.titleContainer}>
-                <AppText intendedFontSize={48} intendedColor='red' text="All Workouts"/>
-            </View>
-            <Flatlist 
-            style={styles.scrollViewStyle}
-            data
-            />
-        </SafeAreaView>
-    );
+      <SafeAreaView style={{flex:1}}>
+        <Button title="Add Test Workout" onPress={addTestWorkout} />
+        <Button title="Add Workout" onPress={() => setMode('add')} />
+        <FlatList
+          data={workouts}
+          renderItem={({ item }) => (
+          <View>
+            <Text>{item.name}</Text>
+
+            <Button title="Delete" onPress={() => deleteWorkout(item.id)} />
+          </View>
+        )}
+        keyExtractor={(item) => item.id.toString()}
+      />
+    </SafeAreaView>
+  );
+} else {
+  return (
+    <SafeAreaView style={{flex:1}}>
+      <TextInput
+        placeholder="Enter workout name"
+        value={workoutName}
+        onChangeText={(text) => setWorkoutName(text)}
+      />
+      <TextInput
+        placeholder="Enter exercise"
+        value={exercise}
+        onChangeText={(text) => setExercise(text)}
+      />
+      <TextInput
+        placeholder="Enter sets"
+        value={sets}
+        onChangeText={(text) => setSets(text)}
+      />
+      <Button title="Add Exercise to Workout" onPress={addExercise} />
+      <FlatList
+        data={exerciseList}
+        renderItem={({ item }) => (
+          <View>
+            <Text>{item.exercise}</Text>
+            <Text>{item.sets}</Text>
+          </View>
+        )}
+        keyExtractor={(item, index) => index.toString()}
+      />
+      <Button title="Back" onPress={() => setMode('list')} />
+      <Button title="Add Workout to Workouts" onPress={addWorkout} />
+    </SafeAreaView>
+  );
 }
+};
 
-const styles = StyleSheet.create({
-    scrollViewStyle: {
-        flex: 1,
-    },
-    workoutContainer:{
-        width: Dimensions.get('window').width * (1 - 0.07),
-        height: Dimensions.get('window').height * 0.2,
-        marginLeft: Dimensions.get('window').width * 0.035,
-        backgroundColor:'white',
-        shadowOffset: {width:0,height:18},
-        shadowRadius: 10,
-        shadowOpacity: 0.15,
-        borderRadius: 30,
-        marginVertical: Dimensions.get('window').height * 0.02
-    },
-    titleContainer : {
-        paddingLeft: Dimensions.get('window').width * 0.035
-    }
-})
-
-export default AllWorkoutsScreen;
+export default WorkoutsScreen;
