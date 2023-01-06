@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, FlatList, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, Button, FlatList, SafeAreaView, StyleSheet } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 
 const db = SQLite.openDatabase('workouts.db');
@@ -15,11 +15,7 @@ const WorkoutsScreen = () => {
   useEffect(() => {
     db.transaction((tx) => {
       tx.executeSql(
-        'CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, exerciseList TEXT NOT NULL, setsList TEXT NOT NULL);',
-        (_, result) => {
-          console.log(result);
-          console.log("executeSql successfully executed.")
-        }
+        'CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, exerciseList TEXT NOT NULL);',
       );
     });
     retrieveWorkouts();
@@ -34,8 +30,8 @@ const WorkoutsScreen = () => {
   const addWorkout = () => {
     db.transaction((tx) => {
       tx.executeSql(
-        'INSERT INTO workouts (name, exerciseList, setsList) VALUES (?, ?, ?)',
-        [workoutName, JSON.stringify(exerciseList), JSON.stringify(exerciseList.map((exercise) => exercise.sets))]
+        'INSERT INTO workouts (name, exerciseList) VALUES (?, ?)',
+        [workoutName, JSON.stringify(exerciseList)]
       );
     });
     setWorkoutName('');
@@ -65,8 +61,8 @@ const WorkoutsScreen = () => {
     try {
       db.transaction((tx) => {
         tx.executeSql(
-          'INSERT INTO workouts (nme, exerciseList, setsList) VALUES (?, ?, ?',
-          ['Test Workout', '[{"exercise":"Pushups","sets":10}]', '[{"sets":3}]'],
+          'INSERT INTO workouts (name, exerciseList) VALUES (?, ?)',
+          ['Test Workout', '[{"exercise":"Pushups","sets":10}, {"exercise":"Squats","sets":5}]'],
           (_, result) => {
             console.log(result);
             console.log("executeSql successfully executed.")
@@ -78,18 +74,44 @@ const WorkoutsScreen = () => {
     } catch (error) {
       console.log(error);
     }
+    retrieveWorkouts();
   }; 
+
+  const deleteAllWorkouts = () => {
+    try {
+      db.transaction((tx) => {
+        tx.executeSql(
+          'DELETE FROM workouts',
+          [],
+        );
+      });
+    } catch (error) {
+      console.log(error);
+    }
+    retrieveWorkouts();
+  };
 
   if (mode === 'list') {
     return (
       <SafeAreaView style={{flex:1}}>
         <Button title="Add Test Workout" onPress={addTestWorkout} />
         <Button title="Add Workout" onPress={() => setMode('add')} />
+        <Button title="Delete All Workouts" onPress={deleteAllWorkouts} />
         <FlatList
           data={workouts}
           renderItem={({ item }) => (
-          <View>
-            <Text>{item.name}</Text>
+          <View style={styles.workoutContainer}>
+            <Text style={{fontWeight:"bold"}}>{item.name}</Text>
+            <FlatList
+                data={JSON.parse(item.exerciseList)}
+                renderItem={({ item }) => (
+                  <View>
+                    <Text>{item.exercise}: {item.sets} sets</Text>
+                  </View>
+                )}
+                keyExtractor={(item, index) => index.toString()}
+              />
+
 
             <Button title="Delete" onPress={() => deleteWorkout(item.id)} />
           </View>
@@ -135,3 +157,12 @@ const WorkoutsScreen = () => {
 };
 
 export default WorkoutsScreen;
+
+const styles = StyleSheet.create({
+  workoutContainer: {
+    backgroundColor:'white',
+    borderRadius:32,
+    paddingVertical:15,
+    marginVertical:5
+  }
+})

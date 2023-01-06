@@ -38,7 +38,7 @@ export default function AppNavigation() {
             if (route.name == 'All Workouts') {return <FontAwesome5 name="dumbbell" size={size - 6} color={color} />}
             else {return <Ionicons name={iconName} size={size} color={color} />;}
           },
-          tabBarActiveTintColor: 'tomato',
+          tabBarActiveTintColor: 'crimson',
           tabBarInactiveTintColor: 'gray',
         })}
       >
